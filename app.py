@@ -1,6 +1,5 @@
 import streamlit as st
 import os
-import tempfile
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -13,7 +12,6 @@ from deep_translator import GoogleTranslator
 from langdetect import detect
 
 from streamlit_mic_recorder import mic_recorder
-import speech_recognition as sr
 
 from indic_transliteration import sanscript
 from indic_transliteration.sanscript import transliterate
@@ -134,26 +132,6 @@ def detect_emotion(text):
     return result["label"]
 
 
-# -------------------- SPEECH TO TEXT --------------------
-def speech_to_text(audio_bytes):
-
-    recognizer = sr.Recognizer()
-
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio:
-        temp_audio.write(audio_bytes)
-        temp_audio_path = temp_audio.name
-
-    with sr.AudioFile(temp_audio_path) as source:
-        audio = recognizer.record(source)
-
-    try:
-        text = recognizer.recognize_google(audio, language="hi-IN")
-    except:
-        text = ""
-
-    return text
-
-
 # -------------------- CHAT FUNCTION --------------------
 def ask_question(question):
 
@@ -229,9 +207,16 @@ audio = mic_recorder(
 user_input = ""
 
 if audio:
-    text = speech_to_text(audio["bytes"])
+
+    # Some browsers provide transcript directly
+    if "text" in audio and audio["text"]:
+        text = audio["text"]
+    else:
+        text = ""
+
     st.write("You said:", text)
     user_input = text
+
 else:
     user_input = st.text_input("How are you feeling today?")
 
