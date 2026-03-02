@@ -13,7 +13,7 @@ from langdetect import detect
 
 
 # -------------------- CONFIG --------------------
-os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
+os.environ["GROQ_API_KEY"] = st.secrets["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"]
 
 
 # -------------------- LOAD VECTOR DB --------------------
@@ -177,3 +177,4 @@ st.warning(
     "⚠️ This chatbot is not a medical professional. "
     "If you are in crisis, contact a licensed professional."
 )
+
