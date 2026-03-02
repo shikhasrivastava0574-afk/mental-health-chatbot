@@ -13,3 +13,4 @@ langdetect
 streamlit-mic-recorder
 speechrecognition
 indic-transliteration
+requests
