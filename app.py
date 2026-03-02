@@ -13,9 +13,6 @@ from langdetect import detect
 
 from streamlit_mic_recorder import mic_recorder
 
-from indic_transliteration import sanscript
-from indic_transliteration.sanscript import transliterate
-
 
 # -------------------- CONFIG --------------------
 os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
@@ -75,7 +72,7 @@ def detect_language_type(text):
     hinglish_words = [
         "mujhe", "tum", "kya", "kyun", "nahi", "hai",
         "ho", "raha", "kar", "mera", "apna", "kaise",
-        "bahut", "dil", "mann"
+        "bahut", "dil", "mann", "lag", "accha"
     ]
 
     text_lower = text.lower()
@@ -95,10 +92,6 @@ def translate_to_english(text):
 
 def translate_to_hindi(text):
     return GoogleTranslator(source="en", target="hi").translate(text)
-
-
-def hindi_to_hinglish(text):
-    return transliterate(text, sanscript.DEVANAGARI, sanscript.ITRANS)
 
 
 # -------------------- CRISIS DETECTION --------------------
@@ -137,7 +130,7 @@ def ask_question(question):
 
     lang_type = detect_language_type(question)
 
-    # Translate to English
+    # Translate to English for processing
     if lang_type in ["hindi", "hinglish"]:
         question_en = translate_to_english(question)
     else:
@@ -151,8 +144,8 @@ def ask_question(question):
             return translate_to_hindi(response)
 
         if lang_type == "hinglish":
-            hindi = translate_to_hindi(response)
-            return hindi_to_hinglish(hindi)
+            prompt = f"Convert this into natural Hinglish (Roman Hindi): {response}"
+            return llm.invoke(prompt).content
 
         return response
 
@@ -162,6 +155,16 @@ def ask_question(question):
     # Retrieval
     docs = retriever.invoke(question_en)
     context = "\n\n".join([doc.page_content for doc in docs])
+
+    # Language instruction
+    if lang_type == "hindi":
+        language_instruction = "Reply in Hindi."
+
+    elif lang_type == "hinglish":
+        language_instruction = "Reply in natural Hinglish (Roman Hindi, casual Indian style)."
+
+    else:
+        language_instruction = "Reply in English."
 
     prompt = f"""
     You are a supportive mental health assistant.
@@ -174,19 +177,13 @@ def ask_question(question):
     Question:
     {question_en}
 
+    {language_instruction}
+
     Give a caring and supportive answer.
     """
 
     response = llm.invoke(prompt)
     answer = response.content
-
-    # Convert back to user language
-    if lang_type == "hindi":
-        answer = translate_to_hindi(answer)
-
-    elif lang_type == "hinglish":
-        hindi = translate_to_hindi(answer)
-        answer = hindi_to_hinglish(hindi)
 
     return f"(Emotion: {emotion})\n{answer}"
 
@@ -208,7 +205,6 @@ user_input = ""
 
 if audio:
 
-    # Some browsers provide transcript directly
     if "text" in audio and audio["text"]:
         text = audio["text"]
     else:
