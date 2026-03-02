@@ -13,7 +13,7 @@ from langdetect import detect
 
 
 # -------------------- CONFIG --------------------
-os.environ["GROQ_API_KEY"] = st.secrets["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"]
+os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
 
 
 # -------------------- LOAD VECTOR DB --------------------
