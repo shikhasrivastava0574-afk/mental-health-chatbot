@@ -10,3 +10,6 @@ pypdf
 torch
 deep-translator
 langdetect
+streamlit-mic-recorder
+speechrecognition
+indic-transliteration
