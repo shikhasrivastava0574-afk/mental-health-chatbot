@@ -14,26 +14,34 @@ from langdetect import detect
 
 # -------------------- PAGE CONFIG --------------------
 st.set_page_config(
-    page_title="Mental Health Assistant 🌸",
-    page_icon="💖",
+    page_title="Mental Health Assistant 🌿",
+    page_icon="💙",
     layout="centered"
 )
 
 
-# -------------------- CUTE BACKGROUND + WHITE INPUT --------------------
+# -------------------- THERAPY CALM THEME --------------------
 st.markdown("""
 <style>
 
-/* Cute hearts background */
+/* Calm gradient background */
 html, body, [data-testid="stAppViewContainer"] {
-    background:
-        url("https://i.imgur.com/8QfQK8G.png"),
-        linear-gradient(135deg, #ffd6e7, #d6eaff) !important;
-    background-size: 200px, cover;
-    background-repeat: repeat, no-repeat;
+    background: linear-gradient(135deg, #cfe9f1 0%, #e6f4f1 50%, #d8eefe 100%) !important;
 }
 
-/* Remove header dark area */
+/* Soft floating light effect */
+[data-testid="stAppViewContainer"]::before {
+    content: "";
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    background-image: radial-gradient(#ffffff40 2px, transparent 2px);
+    background-size: 50px 50px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Remove header */
 [data-testid="stHeader"] {
     background: transparent !important;
 }
@@ -43,41 +51,43 @@ html, body, [data-testid="stAppViewContainer"] {
     background: transparent !important;
 }
 
-/* WHITE INPUT BOX */
+/* Input box */
 .stTextInput > div > div > input {
     background-color: white !important;
-    color: black !important;
-    border-radius: 18px;
-    border: 2px solid #ff9ecb;
+    color: #333 !important;
+    border-radius: 20px;
+    border: 1.5px solid #9ed0e6;
     padding: 14px;
     font-size: 16px;
 }
 
-/* Chat card */
+/* Chat card (glass effect) */
 .chat-box {
-    background-color: #ffffff;
-    padding: 20px;
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(10px);
+    padding: 22px;
     border-radius: 20px;
-    box-shadow: 0px 4px 15px rgba(0,0,0,0.1);
+    box-shadow: 0px 6px 18px rgba(0,0,0,0.08);
     margin-top: 20px;
-    color: #222;
+    color: #1f2d3d;
     font-size: 17px;
-    line-height: 1.6;
+    line-height: 1.7;
 }
 
 /* Title */
 .title {
     text-align: center;
-    font-size: 34px;
-    font-weight: bold;
-    color: #ff4f8b;
+    font-size: 36px;
+    font-weight: 700;
+    color: #2b6f89;
 }
 
 /* Subtitle */
 .subtitle {
     text-align: center;
-    color: #444;
-    margin-bottom: 20px;
+    color: #4a6a7a;
+    margin-bottom: 25px;
+    font-size: 17px;
 }
 
 </style>
@@ -198,13 +208,13 @@ def ask_question(question):
         language_instruction = "Reply in Hindi."
 
     elif lang_type == "hinglish":
-        language_instruction = "Reply in natural Hinglish (Roman Hindi)."
+        language_instruction = "Reply in natural Hinglish."
 
     else:
         language_instruction = "Reply in English."
 
     prompt = f"""
-    You are a supportive mental health assistant.
+    You are a calm, supportive mental health assistant.
 
     Emotion detected: {emotion}
 
@@ -224,10 +234,10 @@ def ask_question(question):
 
 
 # -------------------- UI --------------------
-st.markdown('<div class="title">🌸 Mental Health AI Assistant</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">You are not alone 💛 | Hindi • Hinglish • English</div>', unsafe_allow_html=True)
+st.markdown('<div class="title">🌿 Mental Health AI Assistant</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">You are not alone 💙 | Hindi • Hinglish • English</div>', unsafe_allow_html=True)
 
-user_input = st.text_input("How are you feeling today? 💭")
+user_input = st.text_input("How are you feeling today? 🌱")
 
 if user_input:
 
@@ -236,14 +246,14 @@ if user_input:
     st.markdown(f"""
     <div class="chat-box">
     🧠 <b>Emotion:</b> {emotion} <br><br>
-    🤖 <b>Bot:</b><br>
+    🤖 <b>Assistant:</b><br>
     {answer}
     </div>
     """, unsafe_allow_html=True)
 
 
 st.markdown("""
-<div style="text-align:center; margin-top:30px; color:#555;">
+<div style="text-align:center; margin-top:30px; color:#5a6d75;">
 ⚠️ This chatbot is not a medical professional.
 If you are in crisis, contact a licensed professional.
 </div>
