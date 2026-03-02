@@ -1,5 +1,7 @@
 import streamlit as st
 import os
+import pandas as pd
+from datetime import datetime
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -20,58 +22,42 @@ st.set_page_config(
 )
 
 
-# -------------------- THERAPY CALM THEME --------------------
+# -------------------- CALM THEME --------------------
 st.markdown("""
 <style>
 
-/* Calm gradient background */
 html, body, [data-testid="stAppViewContainer"] {
     background: linear-gradient(135deg, #cfe9f1 0%, #e6f4f1 50%, #d8eefe 100%) !important;
 }
 
-/* Soft floating effect */
-[data-testid="stAppViewContainer"]::before {
-    content: "";
-    position: fixed;
-    width: 100%;
-    height: 100%;
-    background-image: radial-gradient(#ffffff40 2px, transparent 2px);
-    background-size: 50px 50px;
-    pointer-events: none;
-    z-index: 0;
-}
-
-/* Remove header */
 [data-testid="stHeader"] {
     background: transparent !important;
 }
 
-/* Main container */
 [data-testid="stAppViewContainer"] > .main {
     background: transparent !important;
 }
 
-/* INPUT LABEL — WHITE */
-label, .stTextInput label {
-    color: white !important;
+/* LABEL COLOR FIXED TO BLACK */
+label {
+    color: black !important;
     font-size: 20px !important;
-    font-weight: 500;
+    font-weight: 600;
 }
 
 /* INPUT BOX */
 .stTextInput > div > div > input {
     background-color: white !important;
-    color: #333 !important;
+    color: black !important;
     border-radius: 20px;
     border: 1.5px solid #9ed0e6;
     padding: 14px;
     font-size: 16px;
 }
 
-/* Chat card (glass effect) */
+/* Chat card */
 .chat-box {
-    background: rgba(255, 255, 255, 0.75);
-    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.85);
     padding: 22px;
     border-radius: 20px;
     box-shadow: 0px 6px 18px rgba(0,0,0,0.08);
@@ -81,7 +67,6 @@ label, .stTextInput label {
     line-height: 1.7;
 }
 
-/* Title */
 .title {
     text-align: center;
     font-size: 36px;
@@ -89,7 +74,6 @@ label, .stTextInput label {
     color: #2b6f89;
 }
 
-/* Subtitle */
 .subtitle {
     text-align: center;
     color: #4a6a7a;
@@ -105,7 +89,7 @@ label, .stTextInput label {
 os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
 
 
-# -------------------- LOAD VECTOR DB --------------------
+# -------------------- VECTOR DB --------------------
 @st.cache_resource
 def load_vectorstore():
 
@@ -172,10 +156,6 @@ def translate_to_english(text):
     return GoogleTranslator(source="auto", target="en").translate(text)
 
 
-def translate_to_hindi(text):
-    return GoogleTranslator(source="en", target="hi").translate(text)
-
-
 # -------------------- EMOTION --------------------
 def detect_emotion(text):
 
@@ -211,17 +191,8 @@ def ask_question(question):
     docs = retriever.invoke(question_en)
     context = "\n\n".join([doc.page_content for doc in docs])
 
-    if lang_type == "hindi":
-        language_instruction = "Reply in Hindi."
-
-    elif lang_type == "hinglish":
-        language_instruction = "Reply in natural Hinglish."
-
-    else:
-        language_instruction = "Reply in English."
-
     prompt = f"""
-    You are a calm, supportive mental health assistant.
+    You are a calm mental health assistant.
 
     Emotion detected: {emotion}
 
@@ -230,8 +201,6 @@ def ask_question(question):
 
     Question:
     {question_en}
-
-    {language_instruction}
     """
 
     response = llm.invoke(prompt)
@@ -240,28 +209,87 @@ def ask_question(question):
     return emotion, answer
 
 
+# -------------------- SESSION MEMORY --------------------
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
+if "mood_data" not in st.session_state:
+    st.session_state.mood_data = []
+
+
 # -------------------- UI --------------------
 st.markdown('<div class="title">🌿 Mental Health AI Assistant</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">You are not alone 💙 | Hindi • Hinglish • English</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">You are not alone 💙</div>', unsafe_allow_html=True)
 
+
+# -------------------- USER INPUT --------------------
 user_input = st.text_input("How are you feeling today? 🌱")
 
 if user_input:
 
     emotion, answer = ask_question(user_input)
 
-    st.markdown(f"""
-    <div class="chat-box">
-    🧠 <b>Emotion:</b> {emotion} <br><br>
-    🤖 <b>Assistant:</b><br>
-    {answer}
-    </div>
-    """, unsafe_allow_html=True)
+    # Save chat
+    st.session_state.chat_history.append(("You", user_input))
+    st.session_state.chat_history.append(("Bot", answer))
+
+    # Save mood
+    st.session_state.mood_data.append({
+        "time": datetime.now(),
+        "emotion": emotion
+    })
 
 
+# -------------------- CHAT HISTORY --------------------
+if st.session_state.chat_history:
+
+    st.subheader("💬 Chat History")
+
+    for role, msg in st.session_state.chat_history:
+        st.markdown(f"""
+        <div class="chat-box">
+        <b>{role}:</b> {msg}
+        </div>
+        """, unsafe_allow_html=True)
+
+
+# -------------------- MOOD TRACKER --------------------
+if st.session_state.mood_data:
+
+    st.subheader("📊 Mood Tracker")
+
+    df = pd.DataFrame(st.session_state.mood_data)
+
+    emotion_counts = df["emotion"].value_counts()
+
+    st.bar_chart(emotion_counts)
+
+
+# -------------------- THERAPIST FINDER --------------------
+st.subheader("👩‍⚕️ Therapist Finder")
+
+city = st.selectbox(
+    "Select your city",
+    ["Delhi", "Mumbai", "Bangalore", "Jaipur", "Online"]
+)
+
+if st.button("Find Therapists"):
+
+    therapists = {
+        "Delhi": ["Mind Care Clinic", "Serenity Mental Health"],
+        "Mumbai": ["Hope Therapy Center", "Healing Minds"],
+        "Bangalore": ["Inner Peace Clinic", "Mind Wellness"],
+        "Jaipur": ["Calm Minds Jaipur", "Mental Wellness Center"],
+        "Online": ["BetterHelp", "YourDOST", "MindPeers"]
+    }
+
+    for t in therapists[city]:
+        st.write("•", t)
+
+
+# -------------------- FOOTER --------------------
 st.markdown("""
 <div style="text-align:center; margin-top:30px; color:#5a6d75;">
 ⚠️ This chatbot is not a medical professional.
-If you are in crisis, contact a licensed professional.
 </div>
 """, unsafe_allow_html=True)
