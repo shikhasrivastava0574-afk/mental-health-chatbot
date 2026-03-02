@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+import tempfile
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -10,6 +11,12 @@ from langchain_groq import ChatGroq
 from transformers import pipeline
 from deep_translator import GoogleTranslator
 from langdetect import detect
+
+from streamlit_mic_recorder import mic_recorder
+import speech_recognition as sr
+
+from indic_transliteration import sanscript
+from indic_transliteration.sanscript import transliterate
 
 
 # -------------------- CONFIG --------------------
@@ -64,12 +71,36 @@ def detect_language(text):
         return "en"
 
 
+def detect_language_type(text):
+    lang = detect_language(text)
+
+    hinglish_words = [
+        "mujhe", "tum", "kya", "kyun", "nahi", "hai",
+        "ho", "raha", "kar", "mera", "apna", "kaise",
+        "bahut", "dil", "mann"
+    ]
+
+    text_lower = text.lower()
+
+    if any(word in text_lower for word in hinglish_words):
+        return "hinglish"
+
+    if lang == "hi":
+        return "hindi"
+
+    return "english"
+
+
 def translate_to_english(text):
     return GoogleTranslator(source="auto", target="en").translate(text)
 
 
 def translate_to_hindi(text):
     return GoogleTranslator(source="en", target="hi").translate(text)
+
+
+def hindi_to_hinglish(text):
+    return transliterate(text, sanscript.DEVANAGARI, sanscript.ITRANS)
 
 
 # -------------------- CRISIS DETECTION --------------------
@@ -103,18 +134,33 @@ def detect_emotion(text):
     return result["label"]
 
 
+# -------------------- SPEECH TO TEXT --------------------
+def speech_to_text(audio_bytes):
+
+    recognizer = sr.Recognizer()
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio:
+        temp_audio.write(audio_bytes)
+        temp_audio_path = temp_audio.name
+
+    with sr.AudioFile(temp_audio_path) as source:
+        audio = recognizer.record(source)
+
+    try:
+        text = recognizer.recognize_google(audio, language="hi-IN")
+    except:
+        text = ""
+
+    return text
+
+
 # -------------------- CHAT FUNCTION --------------------
-if "history" not in st.session_state:
-    st.session_state.history = []
-
-
 def ask_question(question):
 
-    # Detect language
-    lang = detect_language(question)
+    lang_type = detect_language_type(question)
 
-    # Translate to English for processing
-    if lang == "hi":
+    # Translate to English
+    if lang_type in ["hindi", "hinglish"]:
         question_en = translate_to_english(question)
     else:
         question_en = question
@@ -122,12 +168,20 @@ def ask_question(question):
     # Crisis detection
     if detect_crisis(question_en):
         response = crisis_response()
-        return translate_to_hindi(response) if lang == "hi" else response
+
+        if lang_type == "hindi":
+            return translate_to_hindi(response)
+
+        if lang_type == "hinglish":
+            hindi = translate_to_hindi(response)
+            return hindi_to_hinglish(hindi)
+
+        return response
 
     # Emotion detection
     emotion = detect_emotion(question_en)
 
-    # Retrieve documents
+    # Retrieval
     docs = retriever.invoke(question_en)
     context = "\n\n".join([doc.page_content for doc in docs])
 
@@ -148,9 +202,13 @@ def ask_question(question):
     response = llm.invoke(prompt)
     answer = response.content
 
-    # Translate back to Hindi if needed
-    if lang == "hi":
+    # Convert back to user language
+    if lang_type == "hindi":
         answer = translate_to_hindi(answer)
+
+    elif lang_type == "hinglish":
+        hindi = translate_to_hindi(answer)
+        answer = hindi_to_hinglish(hindi)
 
     return f"(Emotion: {emotion})\n{answer}"
 
@@ -158,23 +216,32 @@ def ask_question(question):
 # -------------------- UI --------------------
 st.title("🌸 Mental Health AI Assistant")
 st.write("You are not alone 💛")
-st.write("Hindi / Hinglish supported 🇮🇳")
+st.write("Hindi / Hinglish / Voice supported 🇮🇳🎤")
 
-user_input = st.text_input("How are you feeling today?")
+st.write("🎤 Speak instead of typing")
+
+audio = mic_recorder(
+    start_prompt="Start Recording",
+    stop_prompt="Stop Recording",
+    just_once=True
+)
+
+user_input = ""
+
+if audio:
+    text = speech_to_text(audio["bytes"])
+    st.write("You said:", text)
+    user_input = text
+else:
+    user_input = st.text_input("How are you feeling today?")
+
 
 if user_input:
     answer = ask_question(user_input)
-
-    st.session_state.history.append(("You", user_input))
-    st.session_state.history.append(("Bot", answer))
-
-
-for role, text in st.session_state.history:
-    st.write(f"**{role}:** {text}")
+    st.write("Bot:", answer)
 
 
 st.warning(
     "⚠️ This chatbot is not a medical professional. "
     "If you are in crisis, contact a licensed professional."
 )
-
