@@ -20,32 +20,37 @@ st.set_page_config(
 )
 
 
-# -------------------- FULL CUTE BACKGROUND CSS --------------------
+# -------------------- CUTE BACKGROUND + WHITE INPUT --------------------
 st.markdown("""
 <style>
 
-/* Full app background */
+/* Cute hearts background */
 html, body, [data-testid="stAppViewContainer"] {
-    background: linear-gradient(135deg, #ffd6e7, #d6eaff) !important;
+    background:
+        url("https://i.imgur.com/8QfQK8G.png"),
+        linear-gradient(135deg, #ffd6e7, #d6eaff) !important;
+    background-size: 200px, cover;
+    background-repeat: repeat, no-repeat;
 }
 
-/* Remove dark header */
+/* Remove header dark area */
 [data-testid="stHeader"] {
     background: transparent !important;
 }
 
-/* Main container transparent */
+/* Main container */
 [data-testid="stAppViewContainer"] > .main {
     background: transparent !important;
 }
 
-/* Input box */
+/* WHITE INPUT BOX */
 .stTextInput > div > div > input {
-    border-radius: 15px;
+    background-color: white !important;
+    color: black !important;
+    border-radius: 18px;
     border: 2px solid #ff9ecb;
-    padding: 12px;
+    padding: 14px;
     font-size: 16px;
-    color: black;
 }
 
 /* Chat card */
@@ -123,7 +128,7 @@ emotion_classifier = pipeline(
 )
 
 
-# -------------------- LANGUAGE FUNCTIONS --------------------
+# -------------------- LANGUAGE --------------------
 def detect_language(text):
     try:
         return detect(text)
@@ -154,7 +159,7 @@ def translate_to_hindi(text):
     return GoogleTranslator(source="en", target="hi").translate(text)
 
 
-# -------------------- EMOTION DETECTION --------------------
+# -------------------- EMOTION --------------------
 def detect_emotion(text):
 
     distress_words = [
@@ -174,7 +179,7 @@ def detect_emotion(text):
     return emotion
 
 
-# -------------------- CHAT FUNCTION --------------------
+# -------------------- CHAT --------------------
 def ask_question(question):
 
     lang_type = detect_language_type(question)
