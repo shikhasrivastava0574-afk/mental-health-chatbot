@@ -8,3 +8,5 @@ faiss-cpu
 transformers
 pypdf
 torch
+deep-translator
+langdetect
