@@ -6,13 +6,17 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_groq import ChatGroq
+
 from transformers import pipeline
+from deep_translator import GoogleTranslator
+from langdetect import detect
 
 
 # -------------------- CONFIG --------------------
-os.environ["GROQ_API_KEY"] = st.secrets["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"]
+os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
 
-# -------------------- LOAD DATA --------------------
+
+# -------------------- LOAD VECTOR DB --------------------
 @st.cache_resource
 def load_vectorstore():
 
@@ -52,7 +56,23 @@ emotion_classifier = pipeline(
 )
 
 
-# -------------------- CRISIS --------------------
+# -------------------- LANGUAGE FUNCTIONS --------------------
+def detect_language(text):
+    try:
+        return detect(text)
+    except:
+        return "en"
+
+
+def translate_to_english(text):
+    return GoogleTranslator(source="auto", target="en").translate(text)
+
+
+def translate_to_hindi(text):
+    return GoogleTranslator(source="en", target="hi").translate(text)
+
+
+# -------------------- CRISIS DETECTION --------------------
 crisis_keywords = [
     "suicide", "kill myself", "want to die",
     "end my life", "self harm", "hurt myself"
@@ -77,6 +97,7 @@ Please reach out to someone you trust 💛
 """
 
 
+# -------------------- EMOTION DETECTION --------------------
 def detect_emotion(text):
     result = emotion_classifier(text)[0][0]
     return result["label"]
@@ -89,12 +110,25 @@ if "history" not in st.session_state:
 
 def ask_question(question):
 
-    if detect_crisis(question):
-        return crisis_response()
+    # Detect language
+    lang = detect_language(question)
 
-    emotion = detect_emotion(question)
+    # Translate to English for processing
+    if lang == "hi":
+        question_en = translate_to_english(question)
+    else:
+        question_en = question
 
-    docs = retriever.invoke(question)
+    # Crisis detection
+    if detect_crisis(question_en):
+        response = crisis_response()
+        return translate_to_hindi(response) if lang == "hi" else response
+
+    # Emotion detection
+    emotion = detect_emotion(question_en)
+
+    # Retrieve documents
+    docs = retriever.invoke(question_en)
     context = "\n\n".join([doc.page_content for doc in docs])
 
     prompt = f"""
@@ -106,17 +140,25 @@ def ask_question(question):
     {context}
 
     Question:
-    {question}
+    {question_en}
+
+    Give a caring and supportive answer.
     """
 
     response = llm.invoke(prompt)
+    answer = response.content
 
-    return f"(Emotion: {emotion})\n{response.content}"
+    # Translate back to Hindi if needed
+    if lang == "hi":
+        answer = translate_to_hindi(answer)
+
+    return f"(Emotion: {emotion})\n{answer}"
 
 
 # -------------------- UI --------------------
 st.title("🌸 Mental Health AI Assistant")
 st.write("You are not alone 💛")
+st.write("Hindi / Hinglish supported 🇮🇳")
 
 user_input = st.text_input("How are you feeling today?")
 
@@ -129,6 +171,7 @@ if user_input:
 
 for role, text in st.session_state.history:
     st.write(f"**{role}:** {text}")
+
 
 st.warning(
     "⚠️ This chatbot is not a medical professional. "
