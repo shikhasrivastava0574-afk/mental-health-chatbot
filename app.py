@@ -29,7 +29,7 @@ html, body, [data-testid="stAppViewContainer"] {
     background: linear-gradient(135deg, #cfe9f1 0%, #e6f4f1 50%, #d8eefe 100%) !important;
 }
 
-/* Soft floating light effect */
+/* Soft floating effect */
 [data-testid="stAppViewContainer"]::before {
     content: "";
     position: fixed;
@@ -51,7 +51,14 @@ html, body, [data-testid="stAppViewContainer"] {
     background: transparent !important;
 }
 
-/* Input box */
+/* INPUT LABEL — WHITE */
+label, .stTextInput label {
+    color: white !important;
+    font-size: 20px !important;
+    font-weight: 500;
+}
+
+/* INPUT BOX */
 .stTextInput > div > div > input {
     background-color: white !important;
     color: #333 !important;
