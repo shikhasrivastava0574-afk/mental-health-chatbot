@@ -22,7 +22,7 @@ st.set_page_config(
 )
 
 
-# ---------------- THEME ----------------
+# ---------------- CSS FIX ----------------
 st.markdown("""
 <style>
 
@@ -36,6 +36,19 @@ section[data-testid="stSidebar"] {
     background-color: #f4fbfd !important;
 }
 
+/* FORCE DARK TEXT EVERYWHERE */
+body, p, h1, h2, h3, h4, h5, h6, span, label, div {
+    color: #1f2d3d !important;
+}
+
+/* Input */
+.stTextInput input {
+    background: white !important;
+    color: #1f2d3d !important;
+    border-radius: 12px;
+    border: 1px solid #9ed0e6;
+}
+
 /* User bubble */
 .user-bubble {
     background-color: #daf1ff;
@@ -43,6 +56,7 @@ section[data-testid="stSidebar"] {
     border-radius: 15px;
     margin: 8px 0;
     width: fit-content;
+    color: #1f2d3d !important;
 }
 
 /* Bot bubble */
@@ -53,20 +67,19 @@ section[data-testid="stSidebar"] {
     margin: 8px 0;
     width: fit-content;
     box-shadow: 0px 2px 6px rgba(0,0,0,0.1);
+    color: #1f2d3d !important;
 }
 
-/* Input */
-.stTextInput input {
-    background: white !important;
-    color: black !important;
-    border-radius: 12px;
-    border: 1px solid #9ed0e6;
+/* Title */
+.title {
+    font-size: 38px;
+    font-weight: 700;
+    color: #2b6f89 !important;
 }
 
-/* Label */
-label {
-    color: black !important;
-    font-weight: 600;
+/* Subtitle */
+.subtitle {
+    color: #4a6a7a !important;
 }
 
 </style>
@@ -224,12 +237,12 @@ with st.sidebar:
             st.write("•", t)
 
 
-# ---------------- MAIN CHAT ----------------
-st.title("🌿 Mental Health AI Assistant")
-st.caption("You are not alone 💙")
+# ---------------- MAIN ----------------
+st.markdown('<div class="title">🌿 Mental Health AI Assistant</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">You are not alone 💙</div>', unsafe_allow_html=True)
 
 
-# Display messages
+# Display chat
 for msg in st.session_state.messages:
 
     if msg["role"] == "user":
@@ -244,7 +257,7 @@ for msg in st.session_state.messages:
         )
 
 
-# ---------------- INPUT ----------------
+# Input
 user_input = st.text_input("How are you feeling today?")
 
 if user_input:
@@ -269,7 +282,7 @@ if user_input:
     st.rerun()
 
 
-# ---------------- FOOTER ----------------
+# Footer
 st.markdown("""
 ---
 ⚠️ This chatbot is not a medical professional.
