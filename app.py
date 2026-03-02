@@ -11,7 +11,64 @@ from transformers import pipeline
 from deep_translator import GoogleTranslator
 from langdetect import detect
 
-from streamlit_mic_recorder import mic_recorder
+
+# -------------------- PAGE CONFIG --------------------
+st.set_page_config(
+    page_title="Mental Health Assistant 🌸",
+    page_icon="💖",
+    layout="centered"
+)
+
+
+# -------------------- CUSTOM CSS --------------------
+st.markdown("""
+<style>
+
+body {
+    background: linear-gradient(135deg, #ffd6e7, #d6eaff);
+}
+
+.main {
+    background: linear-gradient(135deg, #ffd6e7, #d6eaff);
+}
+
+.stTextInput > div > div > input {
+    border-radius: 15px;
+    border: 2px solid #ff9ecb;
+    padding: 12px;
+    font-size: 16px;
+}
+
+.stButton > button {
+    border-radius: 15px;
+    background-color: #ff9ecb;
+    color: white;
+    font-weight: bold;
+}
+
+.chat-box {
+    background-color: #ffffffcc;
+    padding: 20px;
+    border-radius: 20px;
+    box-shadow: 0px 4px 15px rgba(0,0,0,0.1);
+    margin-top: 20px;
+}
+
+.title {
+    text-align: center;
+    font-size: 32px;
+    font-weight: bold;
+    color: #ff4f8b;
+}
+
+.subtitle {
+    text-align: center;
+    color: #555;
+    margin-bottom: 20px;
+}
+
+</style>
+""", unsafe_allow_html=True)
 
 
 # -------------------- CONFIG --------------------
@@ -58,7 +115,7 @@ emotion_classifier = pipeline(
 )
 
 
-# -------------------- LANGUAGE FUNCTIONS --------------------
+# -------------------- LANGUAGE --------------------
 def detect_language(text):
     try:
         return detect(text)
@@ -69,15 +126,9 @@ def detect_language(text):
 def detect_language_type(text):
     lang = detect_language(text)
 
-    hinglish_words = [
-        "mujhe", "tum", "kya", "kyun", "nahi", "hai",
-        "ho", "raha", "kar", "mera", "apna", "kaise",
-        "bahut", "dil", "mann", "lag", "accha", "lg"
-    ]
+    hinglish_words = ["mujhe", "tum", "nahi", "hai", "ho", "lg"]
 
-    text_lower = text.lower()
-
-    if any(word in text_lower for word in hinglish_words):
+    if any(word in text.lower() for word in hinglish_words):
         return "hinglish"
 
     if lang == "hi":
@@ -87,52 +138,22 @@ def detect_language_type(text):
 
 
 def translate_to_english(text):
-    translated = GoogleTranslator(source="auto", target="en").translate(text)
-    return translated.lower()
+    return GoogleTranslator(source="auto", target="en").translate(text)
 
 
 def translate_to_hindi(text):
     return GoogleTranslator(source="en", target="hi").translate(text)
 
 
-# -------------------- CRISIS DETECTION --------------------
-crisis_keywords = [
-    "suicide", "kill myself", "want to die",
-    "end my life", "self harm", "hurt myself"
-]
-
-
-def detect_crisis(text):
-    text = text.lower()
-    return any(word in text for word in crisis_keywords)
-
-
-def crisis_response():
-    return """
-🚨 You are not alone.
-
-If you are in immediate danger please contact:
-
-📞 Kiran Mental Health Helpline: 1800-599-0019  
-📞 AASRA: +91-9820466726  
-
-Please reach out to someone you trust 💛
-"""
-
-
-# -------------------- EMOTION DETECTION (FIXED) --------------------
+# -------------------- EMOTION --------------------
 def detect_emotion(text):
 
-    text_lower = text.lower()
-
     distress_words = [
-        "not good", "sad", "upset", "bad", "low",
-        "depressed", "anxious", "stress", "tired",
-        "cry", "lonely", "hurt", "pain", "empty",
-        "don't feel good"
+        "not good", "sad", "bad", "low",
+        "depressed", "anxious", "stress"
     ]
 
-    if any(word in text_lower for word in distress_words):
+    if any(word in text.lower() for word in distress_words):
         return "sadness"
 
     result = emotion_classifier(text)[0][0]
@@ -144,43 +165,26 @@ def detect_emotion(text):
     return emotion
 
 
-# -------------------- CHAT FUNCTION --------------------
+# -------------------- CHAT --------------------
 def ask_question(question):
 
     lang_type = detect_language_type(question)
 
-    # Translate to English for processing
     if lang_type in ["hindi", "hinglish"]:
         question_en = translate_to_english(question)
     else:
         question_en = question
 
-    # Crisis detection
-    if detect_crisis(question_en):
-        response = crisis_response()
-
-        if lang_type == "hindi":
-            return translate_to_hindi(response)
-
-        if lang_type == "hinglish":
-            prompt = f"Convert this into natural Hinglish (Roman Hindi): {response}"
-            return llm.invoke(prompt).content
-
-        return response
-
-    # Emotion detection
     emotion = detect_emotion(question_en)
 
-    # Retrieval
     docs = retriever.invoke(question_en)
     context = "\n\n".join([doc.page_content for doc in docs])
 
-    # Language instruction
     if lang_type == "hindi":
         language_instruction = "Reply in Hindi."
 
     elif lang_type == "hinglish":
-        language_instruction = "Reply in natural Hinglish (Roman Hindi, casual Indian style)."
+        language_instruction = "Reply in natural Hinglish (Roman Hindi)."
 
     else:
         language_instruction = "Reply in English."
@@ -197,51 +201,35 @@ def ask_question(question):
     {question_en}
 
     {language_instruction}
-
-    Give a caring and supportive answer.
     """
 
     response = llm.invoke(prompt)
     answer = response.content
 
-    return f"(Emotion: {emotion})\n{answer}"
+    return emotion, answer
 
 
 # -------------------- UI --------------------
-st.title("🌸 Mental Health AI Assistant")
-st.write("You are not alone 💛")
-st.write("Hindi / Hinglish / Voice supported 🇮🇳🎤")
+st.markdown('<div class="title">🌸 Mental Health AI Assistant</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">You are not alone 💛 | Hindi • Hinglish • English</div>', unsafe_allow_html=True)
 
-st.write("🎤 Speak instead of typing")
-
-audio = mic_recorder(
-    start_prompt="Start Recording",
-    stop_prompt="Stop Recording",
-    just_once=True
-)
-
-user_input = ""
-
-if audio:
-
-    if "text" in audio and audio["text"]:
-        text = audio["text"]
-    else:
-        text = ""
-
-    st.write("You said:", text)
-    user_input = text
-
-else:
-    user_input = st.text_input("How are you feeling today?")
-
+user_input = st.text_input("How are you feeling today? 💭")
 
 if user_input:
-    answer = ask_question(user_input)
-    st.write("Bot:", answer)
+
+    emotion, answer = ask_question(user_input)
+
+    st.markdown(f"""
+    <div class="chat-box">
+    <b>🧠 Emotion:</b> {emotion} <br><br>
+    <b>🤖 Bot:</b> {answer}
+    </div>
+    """, unsafe_allow_html=True)
 
 
-st.warning(
-    "⚠️ This chatbot is not a medical professional. "
-    "If you are in crisis, contact a licensed professional."
-)
+st.markdown("""
+<div style="text-align:center; margin-top:30px; color:#777;">
+⚠️ This chatbot is not a medical professional.
+If you are in crisis, contact a licensed professional.
+</div>
+""", unsafe_allow_html=True)
