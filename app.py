@@ -72,7 +72,7 @@ def detect_language_type(text):
     hinglish_words = [
         "mujhe", "tum", "kya", "kyun", "nahi", "hai",
         "ho", "raha", "kar", "mera", "apna", "kaise",
-        "bahut", "dil", "mann", "lag", "accha"
+        "bahut", "dil", "mann", "lag", "accha", "lg"
     ]
 
     text_lower = text.lower()
@@ -87,7 +87,8 @@ def detect_language_type(text):
 
 
 def translate_to_english(text):
-    return GoogleTranslator(source="auto", target="en").translate(text)
+    translated = GoogleTranslator(source="auto", target="en").translate(text)
+    return translated.lower()
 
 
 def translate_to_hindi(text):
@@ -119,10 +120,28 @@ Please reach out to someone you trust 💛
 """
 
 
-# -------------------- EMOTION DETECTION --------------------
+# -------------------- EMOTION DETECTION (FIXED) --------------------
 def detect_emotion(text):
+
+    text_lower = text.lower()
+
+    distress_words = [
+        "not good", "sad", "upset", "bad", "low",
+        "depressed", "anxious", "stress", "tired",
+        "cry", "lonely", "hurt", "pain", "empty",
+        "don't feel good"
+    ]
+
+    if any(word in text_lower for word in distress_words):
+        return "sadness"
+
     result = emotion_classifier(text)[0][0]
-    return result["label"]
+    emotion = result["label"]
+
+    if emotion == "surprise":
+        emotion = "confusion"
+
+    return emotion
 
 
 # -------------------- CHAT FUNCTION --------------------
