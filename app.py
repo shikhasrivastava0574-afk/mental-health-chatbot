@@ -20,50 +20,58 @@ st.set_page_config(
 )
 
 
-# -------------------- CUSTOM CSS --------------------
+# -------------------- FULL CUTE BACKGROUND CSS --------------------
 st.markdown("""
 <style>
 
-body {
-    background: linear-gradient(135deg, #ffd6e7, #d6eaff);
+/* Full app background */
+html, body, [data-testid="stAppViewContainer"] {
+    background: linear-gradient(135deg, #ffd6e7, #d6eaff) !important;
 }
 
-.main {
-    background: linear-gradient(135deg, #ffd6e7, #d6eaff);
+/* Remove dark header */
+[data-testid="stHeader"] {
+    background: transparent !important;
 }
 
+/* Main container transparent */
+[data-testid="stAppViewContainer"] > .main {
+    background: transparent !important;
+}
+
+/* Input box */
 .stTextInput > div > div > input {
     border-radius: 15px;
     border: 2px solid #ff9ecb;
     padding: 12px;
     font-size: 16px;
+    color: black;
 }
 
-.stButton > button {
-    border-radius: 15px;
-    background-color: #ff9ecb;
-    color: white;
-    font-weight: bold;
-}
-
+/* Chat card */
 .chat-box {
-    background-color: #ffffffcc;
+    background-color: #ffffff;
     padding: 20px;
     border-radius: 20px;
     box-shadow: 0px 4px 15px rgba(0,0,0,0.1);
     margin-top: 20px;
+    color: #222;
+    font-size: 17px;
+    line-height: 1.6;
 }
 
+/* Title */
 .title {
     text-align: center;
-    font-size: 32px;
+    font-size: 34px;
     font-weight: bold;
     color: #ff4f8b;
 }
 
+/* Subtitle */
 .subtitle {
     text-align: center;
-    color: #555;
+    color: #444;
     margin-bottom: 20px;
 }
 
@@ -115,7 +123,7 @@ emotion_classifier = pipeline(
 )
 
 
-# -------------------- LANGUAGE --------------------
+# -------------------- LANGUAGE FUNCTIONS --------------------
 def detect_language(text):
     try:
         return detect(text)
@@ -124,12 +132,13 @@ def detect_language(text):
 
 
 def detect_language_type(text):
-    lang = detect_language(text)
 
     hinglish_words = ["mujhe", "tum", "nahi", "hai", "ho", "lg"]
 
     if any(word in text.lower() for word in hinglish_words):
         return "hinglish"
+
+    lang = detect_language(text)
 
     if lang == "hi":
         return "hindi"
@@ -145,7 +154,7 @@ def translate_to_hindi(text):
     return GoogleTranslator(source="en", target="hi").translate(text)
 
 
-# -------------------- EMOTION --------------------
+# -------------------- EMOTION DETECTION --------------------
 def detect_emotion(text):
 
     distress_words = [
@@ -165,7 +174,7 @@ def detect_emotion(text):
     return emotion
 
 
-# -------------------- CHAT --------------------
+# -------------------- CHAT FUNCTION --------------------
 def ask_question(question):
 
     lang_type = detect_language_type(question)
@@ -221,14 +230,15 @@ if user_input:
 
     st.markdown(f"""
     <div class="chat-box">
-    <b>🧠 Emotion:</b> {emotion} <br><br>
-    <b>🤖 Bot:</b> {answer}
+    🧠 <b>Emotion:</b> {emotion} <br><br>
+    🤖 <b>Bot:</b><br>
+    {answer}
     </div>
     """, unsafe_allow_html=True)
 
 
 st.markdown("""
-<div style="text-align:center; margin-top:30px; color:#777;">
+<div style="text-align:center; margin-top:30px; color:#555;">
 ⚠️ This chatbot is not a medical professional.
 If you are in crisis, contact a licensed professional.
 </div>
