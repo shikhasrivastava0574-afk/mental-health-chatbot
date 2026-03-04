@@ -26,7 +26,7 @@ st.set_page_config(
 
 
 # -------------------------------------------------
-# CSS (FONT FIX)
+# UI STYLE
 # -------------------------------------------------
 
 st.markdown("""
@@ -46,12 +46,6 @@ color:black !important;
 
 [data-testid="stChatMessageContent"]{
 color:black !important;
-}
-
-.stTextInput input{
-background:white !important;
-color:black !important;
-border-radius:12px;
 }
 
 </style>
@@ -118,9 +112,6 @@ if "messages" not in st.session_state:
 if "mood" not in st.session_state:
     st.session_state.mood = []
 
-if "last_message" not in st.session_state:
-    st.session_state.last_message = ""
-
 
 # -------------------------------------------------
 # LANGUAGE FUNCTIONS
@@ -138,7 +129,7 @@ def translate_to_english(text):
 
 
 # -------------------------------------------------
-# EMOTION DETECTION (FIXED FOR HINGLISH)
+# EMOTION DETECTION
 # -------------------------------------------------
 
 def detect_emotion(text):
@@ -152,7 +143,6 @@ def detect_emotion(text):
         "accha nahi",
         "acha nahi",
         "bura lag raha",
-        "mujhe acha nahi",
         "thik nahi"
     ]
 
@@ -161,7 +151,6 @@ def detect_emotion(text):
             return "sadness"
 
     result = emotion_model(text)[0]
-
     return result["label"]
 
 
@@ -172,10 +161,10 @@ def detect_emotion(text):
 def crisis_detection(text):
 
     crisis_words = [
-    "kill myself",
-    "suicide",
-    "want to die",
-    "end my life"
+        "kill myself",
+        "suicide",
+        "want to die",
+        "end my life"
     ]
 
     for word in crisis_words:
@@ -186,14 +175,14 @@ def crisis_detection(text):
 
 
 # -------------------------------------------------
-# CHATBOT FUNCTION
+# CHATBOT RESPONSE
 # -------------------------------------------------
 
 def ask_question(question):
 
     lang = detect_language(question)
 
-    if lang!="en":
+    if lang != "en":
         question_en = translate_to_english(question)
     else:
         question_en = question
@@ -205,29 +194,26 @@ def ask_question(question):
     context = "\n".join([doc.page_content for doc in docs])
 
     prompt = f"""
-You are a compassionate mental health support assistant.
+You are a compassionate mental health assistant.
 
-IMPORTANT RULES:
-- If the user says they feel bad, sad, stressed, anxious, or "not good", respond with empathy.
-- Never assume the user is happy if they say they are not feeling good.
-- Do not hallucinate imaginary scenarios.
-- Be calm and supportive.
-- Ask gentle follow-up questions.
+Rules:
+- Be empathetic
+- Do not assume the user is happy if they say they are not
+- Ask gentle follow-up questions
+- Respond in the user's language
 
-Detected Emotion: {emotion}
+Emotion: {emotion}
 
-Context from mental health guide:
+Context:
 {context}
 
-User message:
+User:
 {question_en}
-
-Respond in the same language as the user (Hindi, Hinglish, or English).
 """
 
     response = llm.invoke(prompt)
 
-    return emotion,response.content
+    return emotion, response.content
 
 
 # -------------------------------------------------
@@ -243,9 +229,9 @@ with st.sidebar:
 
     for msg in st.session_state.messages:
         if msg["role"]=="user":
-            st.write("🙂",msg["content"][:40])
+            st.write("🙂",msg["content"][:35])
         else:
-            st.write("🤖",msg["content"][:40])
+            st.write("🤖",msg["content"][:35])
 
     st.divider()
 
@@ -260,18 +246,18 @@ with st.sidebar:
     st.subheader("👩‍⚕️ Therapist Finder")
 
     city = st.selectbox(
-    "City",
-    ["Delhi","Mumbai","Bangalore","Jaipur","Online"]
+        "City",
+        ["Delhi","Mumbai","Bangalore","Jaipur","Online"]
     )
 
     if st.button("Find Therapist"):
 
-        therapists={
-        "Delhi":["Mind Care Clinic","Serenity Therapy"],
-        "Mumbai":["Hope Therapy Center"],
-        "Bangalore":["Inner Peace Clinic"],
-        "Jaipur":["Calm Minds"],
-        "Online":["BetterHelp","YourDOST","MindPeers"]
+        therapists = {
+            "Delhi":["Mind Care Clinic","Serenity Therapy"],
+            "Mumbai":["Hope Therapy Center"],
+            "Bangalore":["Inner Peace Clinic"],
+            "Jaipur":["Calm Minds"],
+            "Online":["BetterHelp","YourDOST","MindPeers"]
         }
 
         for t in therapists[city]:
@@ -279,7 +265,7 @@ with st.sidebar:
 
 
 # -------------------------------------------------
-# TITLE
+# MAIN TITLE
 # -------------------------------------------------
 
 st.title("🌿 Mental Health AI Assistant")
@@ -287,65 +273,64 @@ st.write("You are not alone 💙")
 
 
 # -------------------------------------------------
-# DISPLAY CHAT
+# DISPLAY PREVIOUS CHAT
 # -------------------------------------------------
 
 for msg in st.session_state.messages:
 
-    if msg["role"]=="user":
-
-        with st.chat_message("user"):
-            st.write(msg["content"])
-
-    else:
-
-        with st.chat_message("assistant"):
-            st.write(msg["content"])
+    with st.chat_message(msg["role"]):
+        st.write(msg["content"])
 
 
 # -------------------------------------------------
-# CHAT INPUT
+# CHAT INPUT (FIXED)
 # -------------------------------------------------
 
 user_input = st.chat_input("How are you feeling today?")
 
-if user_input and st.session_state.last_message != user_input:
+if user_input:
 
-    st.session_state.last_message = user_input
+    # show user message
+    with st.chat_message("user"):
+        st.write(user_input)
 
     st.session_state.messages.append({
-    "role":"user",
-    "content":user_input
+        "role":"user",
+        "content":user_input
     })
 
+    # generate response
     if crisis_detection(user_input):
 
+        emotion="crisis"
+
         response = """
-I'm really sorry you're feeling this way.  
+I'm really sorry you're feeling this way.
+
 You are not alone.
 
 Please consider reaching out to someone immediately.
 
 India Suicide Helpline:
 9152987821
-
-You deserve support and care.
 """
-
-        emotion="crisis"
 
     else:
 
         emotion,response = ask_question(user_input)
 
+    # show bot reply immediately
+    with st.chat_message("assistant"):
+        st.write(response)
+
     st.session_state.messages.append({
-    "role":"assistant",
-    "content":response
+        "role":"assistant",
+        "content":response
     })
 
     st.session_state.mood.append({
-    "time":datetime.now(),
-    "emotion":emotion
+        "time":datetime.now(),
+        "emotion":emotion
     })
 
 
