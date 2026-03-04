@@ -14,7 +14,10 @@ from deep_translator import GoogleTranslator
 from langdetect import detect
 
 
-# ---------------- PAGE CONFIG ----------------
+# -------------------------------------------------
+# PAGE CONFIG
+# -------------------------------------------------
+
 st.set_page_config(
     page_title="Mental Health Assistant",
     page_icon="🌿",
@@ -22,35 +25,29 @@ st.set_page_config(
 )
 
 
-# ---------------- CSS (FONT FIX) ----------------
+# -------------------------------------------------
+# CSS (FONT FIX)
+# -------------------------------------------------
+
 st.markdown("""
 <style>
 
-/* app background */
 [data-testid="stAppViewContainer"]{
 background: linear-gradient(135deg,#cfe9f1,#e6f4f1);
 }
 
-/* sidebar */
 section[data-testid="stSidebar"]{
 background:#f4fbfd;
 }
 
-/* FORCE TEXT TO BLACK */
 body, p, span, div, label, h1, h2, h3{
 color:black !important;
 }
 
-/* chat message text */
 [data-testid="stChatMessageContent"]{
 color:black !important;
 }
 
-[data-testid="stChatMessageContent"] p{
-color:black !important;
-}
-
-/* input box */
 .stTextInput input{
 background:white !important;
 color:black !important;
@@ -61,11 +58,17 @@ border-radius:12px;
 """, unsafe_allow_html=True)
 
 
-# ---------------- API KEY ----------------
+# -------------------------------------------------
+# API KEY
+# -------------------------------------------------
+
 os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
 
 
-# ---------------- LOAD VECTOR DATABASE ----------------
+# -------------------------------------------------
+# LOAD VECTOR DATABASE
+# -------------------------------------------------
+
 @st.cache_resource
 def load_vectorstore():
 
@@ -90,10 +93,13 @@ vectorstore = load_vectorstore()
 retriever = vectorstore.as_retriever(search_kwargs={"k":3})
 
 
-# ---------------- MODELS ----------------
+# -------------------------------------------------
+# MODELS
+# -------------------------------------------------
+
 llm = ChatGroq(
     model_name="llama-3.1-8b-instant",
-    temperature=0.3
+    temperature=0.2
 )
 
 emotion_model = pipeline(
@@ -102,7 +108,10 @@ model="j-hartmann/emotion-english-distilroberta-base"
 )
 
 
-# ---------------- SESSION STATE ----------------
+# -------------------------------------------------
+# SESSION STATE
+# -------------------------------------------------
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -113,7 +122,10 @@ if "last_message" not in st.session_state:
     st.session_state.last_message = ""
 
 
-# ---------------- LANGUAGE ----------------
+# -------------------------------------------------
+# LANGUAGE FUNCTIONS
+# -------------------------------------------------
+
 def detect_language(text):
     try:
         return detect(text)
@@ -125,15 +137,38 @@ def translate_to_english(text):
     return GoogleTranslator(source="auto",target="en").translate(text)
 
 
-# ---------------- EMOTION ----------------
+# -------------------------------------------------
+# EMOTION DETECTION (FIXED FOR HINGLISH)
+# -------------------------------------------------
+
 def detect_emotion(text):
+
+    negative_words = [
+        "not good",
+        "sad",
+        "low",
+        "depressed",
+        "stress",
+        "accha nahi",
+        "acha nahi",
+        "bura lag raha",
+        "mujhe acha nahi",
+        "thik nahi"
+    ]
+
+    for word in negative_words:
+        if word in text.lower():
+            return "sadness"
 
     result = emotion_model(text)[0]
 
     return result["label"]
 
 
-# ---------------- CRISIS DETECTION ----------------
+# -------------------------------------------------
+# CRISIS DETECTION
+# -------------------------------------------------
+
 def crisis_detection(text):
 
     crisis_words = [
@@ -150,7 +185,10 @@ def crisis_detection(text):
     return False
 
 
-# ---------------- CHATBOT ----------------
+# -------------------------------------------------
+# CHATBOT FUNCTION
+# -------------------------------------------------
+
 def ask_question(question):
 
     lang = detect_language(question)
@@ -167,15 +205,24 @@ def ask_question(question):
     context = "\n".join([doc.page_content for doc in docs])
 
     prompt = f"""
-You are a compassionate mental health assistant.
+You are a compassionate mental health support assistant.
 
-Emotion detected: {emotion}
+IMPORTANT RULES:
+- If the user says they feel bad, sad, stressed, anxious, or "not good", respond with empathy.
+- Never assume the user is happy if they say they are not feeling good.
+- Do not hallucinate imaginary scenarios.
+- Be calm and supportive.
+- Ask gentle follow-up questions.
 
-Context:
+Detected Emotion: {emotion}
+
+Context from mental health guide:
 {context}
 
-User:
+User message:
 {question_en}
+
+Respond in the same language as the user (Hindi, Hinglish, or English).
 """
 
     response = llm.invoke(prompt)
@@ -183,7 +230,10 @@ User:
     return emotion,response.content
 
 
-# ---------------- SIDEBAR ----------------
+# -------------------------------------------------
+# SIDEBAR
+# -------------------------------------------------
+
 with st.sidebar:
 
     st.title("💬 Chat History")
@@ -228,12 +278,18 @@ with st.sidebar:
             st.write("•",t)
 
 
-# ---------------- TITLE ----------------
+# -------------------------------------------------
+# TITLE
+# -------------------------------------------------
+
 st.title("🌿 Mental Health AI Assistant")
 st.write("You are not alone 💙")
 
 
-# ---------------- DISPLAY CHAT ----------------
+# -------------------------------------------------
+# DISPLAY CHAT
+# -------------------------------------------------
+
 for msg in st.session_state.messages:
 
     if msg["role"]=="user":
@@ -247,7 +303,10 @@ for msg in st.session_state.messages:
             st.write(msg["content"])
 
 
-# ---------------- CHAT INPUT ----------------
+# -------------------------------------------------
+# CHAT INPUT
+# -------------------------------------------------
+
 user_input = st.chat_input("How are you feeling today?")
 
 if user_input and st.session_state.last_message != user_input:
@@ -290,7 +349,10 @@ You deserve support and care.
     })
 
 
-# ---------------- FOOTER ----------------
+# -------------------------------------------------
+# FOOTER
+# -------------------------------------------------
+
 st.markdown("""
 ---
 ⚠️ This chatbot is not a medical professional.  
