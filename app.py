@@ -14,83 +14,52 @@ from deep_translator import GoogleTranslator
 from langdetect import detect
 
 
-# ---------------- PAGE CONFIG ----------------
+# -------------------------------------------------
+# PAGE CONFIG
+# -------------------------------------------------
+
 st.set_page_config(
     page_title="Mental Health Assistant",
     page_icon="🌿",
     layout="wide"
 )
 
+# -------------------------------------------------
+# CSS (FIXED COLORS)
+# -------------------------------------------------
 
-# ---------------- CSS FIX ----------------
 st.markdown("""
 <style>
 
-/* Background */
-html, body, [data-testid="stAppViewContainer"] {
-    background: linear-gradient(135deg, #cfe9f1, #e6f4f1) !important;
+[data-testid="stAppViewContainer"]{
+background: linear-gradient(135deg,#cfe9f1,#e6f4f1);
 }
 
-/* Sidebar */
-section[data-testid="stSidebar"] {
-    background-color: #f4fbfd !important;
+body{
+color:#1f2d3d;
 }
 
-/* FORCE DARK TEXT EVERYWHERE */
-body, p, h1, h2, h3, h4, h5, h6, span, label, div {
-    color: #1f2d3d !important;
-}
-
-/* Input */
-.stTextInput input {
-    background: white !important;
-    color: #1f2d3d !important;
-    border-radius: 12px;
-    border: 1px solid #9ed0e6;
-}
-
-/* User bubble */
-.user-bubble {
-    background-color: #daf1ff;
-    padding: 12px 16px;
-    border-radius: 15px;
-    margin: 8px 0;
-    width: fit-content;
-    color: #1f2d3d !important;
-}
-
-/* Bot bubble */
-.bot-bubble {
-    background-color: #ffffff;
-    padding: 12px 16px;
-    border-radius: 15px;
-    margin: 8px 0;
-    width: fit-content;
-    box-shadow: 0px 2px 6px rgba(0,0,0,0.1);
-    color: #1f2d3d !important;
-}
-
-/* Title */
-.title {
-    font-size: 38px;
-    font-weight: 700;
-    color: #2b6f89 !important;
-}
-
-/* Subtitle */
-.subtitle {
-    color: #4a6a7a !important;
+.stTextInput input{
+background:white !important;
+color:black !important;
+border-radius:12px;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
 
-# ---------------- API KEY ----------------
+# -------------------------------------------------
+# API KEY
+# -------------------------------------------------
+
 os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
 
 
-# ---------------- VECTOR DB ----------------
+# -------------------------------------------------
+# LOAD VECTOR DATABASE
+# -------------------------------------------------
+
 @st.cache_resource
 def load_vectorstore():
 
@@ -112,31 +81,42 @@ def load_vectorstore():
 
 
 vectorstore = load_vectorstore()
-retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+retriever = vectorstore.as_retriever(search_kwargs={"k":3})
 
 
-# ---------------- MODELS ----------------
+# -------------------------------------------------
+# MODELS
+# -------------------------------------------------
+
 llm = ChatGroq(
     model_name="llama-3.1-8b-instant",
     temperature=0.3
 )
 
-emotion_classifier = pipeline(
-    "text-classification",
-    model="j-hartmann/emotion-english-distilroberta-base",
-    top_k=1
+emotion_model = pipeline(
+"text-classification",
+model="j-hartmann/emotion-english-distilroberta-base"
 )
 
 
-# ---------------- SESSION STATE ----------------
+# -------------------------------------------------
+# SESSION STATE
+# -------------------------------------------------
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 if "mood" not in st.session_state:
     st.session_state.mood = []
 
+if "last_message" not in st.session_state:
+    st.session_state.last_message = ""
 
-# ---------------- FUNCTIONS ----------------
+
+# -------------------------------------------------
+# LANGUAGE
+# -------------------------------------------------
+
 def detect_language(text):
     try:
         return detect(text)
@@ -145,25 +125,49 @@ def detect_language(text):
 
 
 def translate_to_english(text):
-    return GoogleTranslator(source="auto", target="en").translate(text)
+    return GoogleTranslator(source="auto",target="en").translate(text)
 
+
+# -------------------------------------------------
+# EMOTION
+# -------------------------------------------------
 
 def detect_emotion(text):
 
-    distress_words = ["not good", "sad", "low", "depressed", "stress"]
+    result = emotion_model(text)[0]
 
-    if any(word in text.lower() for word in distress_words):
-        return "sadness"
-
-    result = emotion_classifier(text)[0][0]
     return result["label"]
 
+
+# -------------------------------------------------
+# CRISIS DETECTION
+# -------------------------------------------------
+
+def crisis_detection(text):
+
+    crisis_words = [
+    "kill myself",
+    "suicide",
+    "want to die",
+    "end my life"
+    ]
+
+    for word in crisis_words:
+        if word in text.lower():
+            return True
+
+    return False
+
+
+# -------------------------------------------------
+# CHATBOT
+# -------------------------------------------------
 
 def ask_question(question):
 
     lang = detect_language(question)
 
-    if lang != "en":
+    if lang!="en":
         question_en = translate_to_english(question)
     else:
         question_en = question
@@ -171,42 +175,45 @@ def ask_question(question):
     emotion = detect_emotion(question_en)
 
     docs = retriever.invoke(question_en)
-    context = "\n\n".join([doc.page_content for doc in docs])
+
+    context = "\n".join([doc.page_content for doc in docs])
 
     prompt = f"""
-    You are a supportive mental health assistant.
+You are a compassionate mental health assistant.
 
-    Emotion detected: {emotion}
+Emotion detected: {emotion}
 
-    Context:
-    {context}
+Context:
+{context}
 
-    Question:
-    {question_en}
-    """
+User:
+{question_en}
+"""
 
     response = llm.invoke(prompt)
 
-    return emotion, response.content
+    return emotion,response.content
 
 
-# ---------------- SIDEBAR ----------------
+# -------------------------------------------------
+# SIDEBAR
+# -------------------------------------------------
+
 with st.sidebar:
 
     st.title("💬 Chat History")
 
     if st.button("🆕 New Chat"):
-        st.session_state.messages = []
+        st.session_state.messages=[]
 
     for msg in st.session_state.messages:
-        if msg["role"] == "user":
-            st.write("🧑", msg["content"][:30])
+        if msg["role"]=="user":
+            st.write("🙂",msg["content"][:40])
         else:
-            st.write("🤖", msg["content"][:30])
+            st.write("🤖",msg["content"][:40])
 
     st.divider()
 
-    # Mood Tracker
     st.subheader("📊 Mood Tracker")
 
     if st.session_state.mood:
@@ -215,76 +222,104 @@ with st.sidebar:
 
     st.divider()
 
-    # Therapist Finder
     st.subheader("👩‍⚕️ Therapist Finder")
 
     city = st.selectbox(
-        "City",
-        ["Delhi", "Mumbai", "Bangalore", "Jaipur", "Online"]
+    "City",
+    ["Delhi","Mumbai","Bangalore","Jaipur","Online"]
     )
 
-    if st.button("Find"):
+    if st.button("Find Therapist"):
 
-        therapists = {
-            "Delhi": ["Mind Care Clinic", "Serenity Mental Health"],
-            "Mumbai": ["Hope Therapy Center"],
-            "Bangalore": ["Inner Peace Clinic"],
-            "Jaipur": ["Calm Minds Jaipur"],
-            "Online": ["BetterHelp", "YourDOST", "MindPeers"]
+        therapists={
+        "Delhi":["Mind Care Clinic","Serenity Therapy"],
+        "Mumbai":["Hope Therapy Center"],
+        "Bangalore":["Inner Peace Clinic"],
+        "Jaipur":["Calm Minds"],
+        "Online":["BetterHelp","YourDOST","MindPeers"]
         }
 
         for t in therapists[city]:
-            st.write("•", t)
+            st.write("•",t)
 
 
-# ---------------- MAIN ----------------
-st.markdown('<div class="title">🌿 Mental Health AI Assistant</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">You are not alone 💙</div>', unsafe_allow_html=True)
+# -------------------------------------------------
+# TITLE
+# -------------------------------------------------
+
+st.title("🌿 Mental Health AI Assistant")
+st.write("You are not alone 💙")
 
 
-# Display chat
+# -------------------------------------------------
+# DISPLAY CHAT
+# -------------------------------------------------
+
 for msg in st.session_state.messages:
 
-    if msg["role"] == "user":
-        st.markdown(
-            f'<div class="user-bubble"><b>You:</b> {msg["content"]}</div>',
-            unsafe_allow_html=True
-        )
+    if msg["role"]=="user":
+
+        with st.chat_message("user"):
+            st.write(msg["content"])
+
     else:
-        st.markdown(
-            f'<div class="bot-bubble"><b>Bot:</b> {msg["content"]}</div>',
-            unsafe_allow_html=True
-        )
+
+        with st.chat_message("assistant"):
+            st.write(msg["content"])
 
 
-# Input
-user_input = st.text_input("How are you feeling today?")
+# -------------------------------------------------
+# CHAT INPUT
+# -------------------------------------------------
 
-if user_input:
+user_input = st.chat_input("How are you feeling today?")
 
-    emotion, answer = ask_question(user_input)
+if user_input and st.session_state.last_message != user_input:
+
+    st.session_state.last_message = user_input
 
     st.session_state.messages.append({
-        "role": "user",
-        "content": user_input
+    "role":"user",
+    "content":user_input
     })
 
+    if crisis_detection(user_input):
+
+        response = """
+I'm really sorry you're feeling this way.  
+You are not alone.
+
+Please consider reaching out to someone immediately.
+
+India Suicide Helpline:
+9152987821
+
+You deserve support and care.
+"""
+
+        emotion="crisis"
+
+    else:
+
+        emotion,response = ask_question(user_input)
+
     st.session_state.messages.append({
-        "role": "bot",
-        "content": answer
+    "role":"assistant",
+    "content":response
     })
 
     st.session_state.mood.append({
-        "time": datetime.now(),
-        "emotion": emotion
+    "time":datetime.now(),
+    "emotion":emotion
     })
 
-    st.rerun()
 
+# -------------------------------------------------
+# FOOTER
+# -------------------------------------------------
 
-# Footer
 st.markdown("""
 ---
-⚠️ This chatbot is not a medical professional.
-If you are in crisis, please contact a licensed therapist.
+⚠️ This chatbot is not a medical professional.  
+If you are in crisis please contact a licensed therapist.
 """)
