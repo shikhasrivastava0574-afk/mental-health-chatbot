@@ -1,58 +1,47 @@
 import streamlit as st
 import os
+import pandas as pd
+from datetime import datetime
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_groq import ChatGroq
 from langchain.chains import RetrievalQA
+
+from transformers import pipeline
 
 
 # ---------------- PAGE SETTINGS ---------------- #
 
-st.set_page_config(page_title="Mental Health AI Assistant", layout="wide")
-
-
-# ---------------- UI STYLE ---------------- #
-
-st.markdown(
-    """
-    <style>
-
-    .main {
-        background-color: #e6f2f2;
-    }
-
-    .user-msg {
-        background-color: #7f8c8d;
-        padding: 15px;
-        border-radius: 12px;
-        color: black;
-        font-size: 18px;
-        margin-bottom: 10px;
-    }
-
-    .bot-msg {
-        background-color: #f5f5f5;
-        padding: 15px;
-        border-radius: 12px;
-        color: black;
-        font-size: 18px;
-        margin-bottom: 20px;
-    }
-
-    </style>
-    """,
-    unsafe_allow_html=True,
+st.set_page_config(
+    page_title="Mental Health AI Assistant",
+    page_icon="🌿",
+    layout="wide"
 )
 
-# ---------------- TITLE ---------------- #
+st.title("🌿 Mental Health AI Assistant")
+st.write("You are not alone 💙")
 
-st.markdown("# 🌿 Mental Health AI Assistant")
-st.markdown("### You are not alone 💙")
 
-# ---------------- LOAD PDFS ---------------- #
+# ---------------- EMOTION MODEL ---------------- #
+
+@st.cache_resource
+def load_emotion_model():
+
+    model = pipeline(
+        "text-classification",
+        model="j-hartmann/emotion-english-distilroberta-base"
+    )
+
+    return model
+
+
+emotion_model = load_emotion_model()
+
+
+# ---------------- LOAD PDF KNOWLEDGE ---------------- #
 
 @st.cache_resource
 def load_vectorstore():
@@ -91,9 +80,12 @@ retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 
 # ---------------- LLM ---------------- #
 
+groq_api_key = os.getenv("GROQ_API_KEY")
+
 llm = ChatGroq(
-    groq_api_key=os.environ["GROQ_API_KEY"],
-    model_name="llama3-70b-8192"
+    groq_api_key=groq_api_key,
+    model_name="llama3-70b-8192",
+    temperature=0.3
 )
 
 qa = RetrievalQA.from_chain_type(
@@ -102,50 +94,65 @@ qa = RetrievalQA.from_chain_type(
 )
 
 
-# ---------------- CHAT HISTORY ---------------- #
+# ---------------- SESSION STATE ---------------- #
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+if "mood" not in st.session_state:
+    st.session_state.mood = []
 
-# ---------------- USER INPUT ---------------- #
+
+# ---------------- CHAT INPUT ---------------- #
 
 query = st.chat_input("How are you feeling today?")
 
 
-# ---------------- RESPONSE ---------------- #
+# ---------------- GENERATE RESPONSE ---------------- #
 
 if query:
 
     st.session_state.messages.append(("user", query))
 
+    # emotion detection
+    emotion = emotion_model(query)[0]["label"]
+
+    # rag response
     response = qa.run(query)
 
-    st.session_state.messages.append(("bot", response))
+    st.session_state.messages.append(("assistant", response))
+
+    st.session_state.mood.append({
+        "time": datetime.now(),
+        "emotion": emotion
+    })
 
 
 # ---------------- DISPLAY CHAT ---------------- #
 
 for role, message in st.session_state.messages:
 
-    if role == "user":
-        st.markdown(
-            f'<div class="user-msg">🙂 {message}</div>',
-            unsafe_allow_html=True
-        )
-
-    else:
-        st.markdown(
-            f'<div class="bot-msg">🤖 {message}</div>',
-            unsafe_allow_html=True
-        )
+    with st.chat_message(role):
+        st.write(message)
 
 
-# ---------------- SAFETY MESSAGE ---------------- #
+# ---------------- MOOD DASHBOARD ---------------- #
 
-st.markdown(
-    """
-    ⚠️ **This chatbot is not a medical professional.  
-    If you are in crisis, please contact a licensed therapist or mental health professional.**
-    """
-)
+st.sidebar.title("📊 Mood Tracker")
+
+if st.session_state.mood:
+
+    df = pd.DataFrame(st.session_state.mood)
+
+    mood_counts = df["emotion"].value_counts()
+
+    st.sidebar.bar_chart(mood_counts)
+
+
+# ---------------- FOOTER ---------------- #
+
+st.markdown("""
+---
+⚠️ This chatbot is not a medical professional.  
+If you are experiencing severe distress, please contact a licensed therapist or helpline.
+""")
