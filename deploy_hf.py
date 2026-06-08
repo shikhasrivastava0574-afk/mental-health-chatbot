@@ -16,7 +16,9 @@ def deploy():
         return
         
     username = "shikhasrivastava0574"
-    space_name = "Mental-health_wellness-chatbot"
+    space_name = input("Enter the name for your new Hugging Face Space (default: ZenFlow): ").strip()
+    if not space_name:
+        space_name = "ZenFlow"
     repo_id = f"{username}/{space_name}"
     
     print(f"Creating/Locating Hugging Face Space: {repo_id}...")
