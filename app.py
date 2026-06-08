@@ -122,6 +122,38 @@ vectorstore = load_vectorstore()
 # Setup retriever if vectorstore is loaded
 retriever = vectorstore.as_retriever(search_kwargs={"k": 3}) if vectorstore else None
 
+def get_detected_emotion(text):
+    if not text or not text.strip():
+        return "neutral"
+    text_lower = text.lower().strip()
+    
+    # 1. Simple heuristic overrides for negations and common triggers
+    if any(phrase in text_lower for phrase in ["not good", "not feeling good", "feeling bad", "not okay", "not ok", "not fine", "sad", "depressed", "unhappy"]):
+        return "sadness"
+    if any(phrase in text_lower for phrase in ["anxious", "scared", "afraid", "panic", "worried", "nervous"]):
+        return "fear"
+    if any(phrase in text_lower for phrase in ["angry", "mad", "annoyed", "frustrated", "pissed"]):
+        return "anger"
+    if any(phrase in text_lower for phrase in ["happy", "great", "awesome", "excellent", "wonderful", "joy"]):
+        if not any(neg in text_lower for neg in ["not", "never", "don't", "dont", "no"]):
+            return "joy"
+            
+    # 2. Fallback to ML Model
+    if not emotion_model:
+        return "neutral"
+    try:
+        predictions = emotion_model(text)
+        if not predictions:
+            return "neutral"
+        if isinstance(predictions, list) and len(predictions) > 0:
+            if isinstance(predictions[0], list):
+                predictions = predictions[0]
+            best_prediction = max(predictions, key=lambda x: x.get("score", 0))
+            return best_prediction.get("label", "neutral")
+    except Exception:
+        pass
+    return "neutral"
+
 # ---------------- STYLING SYSTEM (INJECTED CSS) ---------------- #
 
 def inject_custom_css():
@@ -221,6 +253,7 @@ def inject_custom_css():
     .emotion-surprise { background-color: #8B5CF6; box-shadow: 0 0 10px rgba(139, 92, 246, 0.3); }
     .emotion-love { background-color: #EC4899; box-shadow: 0 0 10px rgba(236, 72, 153, 0.3); }
     .emotion-neutral { background-color: #6B7280; box-shadow: 0 0 10px rgba(107, 114, 128, 0.3); }
+    .emotion-disgust { background-color: #7C3AED; box-shadow: 0 0 10px rgba(124, 58, 237, 0.3); }
     
     /* Breathing Circle Visualizer */
     .breathing-wrapper {
@@ -428,13 +461,8 @@ if page == "🌿 AI Care Space":
     query = st.chat_input("How are you feeling right now?")
     
     if query:
-        # Detect emotion locally using DistilRoBERTa
-        detected_emotion = "neutral"
-        if emotion_model:
-            try:
-                detected_emotion = emotion_model(query)[0]["label"]
-            except Exception as e:
-                pass
+        # Detect emotion
+        detected_emotion = get_detected_emotion(query)
                 
         # Save user message
         st.session_state.messages.append({
@@ -659,12 +687,7 @@ elif page == "📖 Daily Reflection Journal":
         if st.button("Analyze & Save Journal Entry", use_container_width=True):
             if entry_text.strip():
                 # Detect sentiment/emotion
-                detected_emo = "neutral"
-                if emotion_model:
-                    try:
-                        detected_emo = emotion_model(entry_text)[0]["label"]
-                    except Exception:
-                        pass
+                detected_emo = get_detected_emotion(entry_text)
                 
                 # Save entry
                 st.session_state.journal_entries.append({
