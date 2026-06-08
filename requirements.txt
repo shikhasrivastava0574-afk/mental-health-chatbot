@@ -1,4 +1,4 @@
-streamlit
+gradio
 langchain
 langchain-community
 langchain-groq

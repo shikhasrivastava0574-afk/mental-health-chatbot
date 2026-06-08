@@ -27,7 +27,7 @@ def deploy():
         create_repo(
             repo_id=repo_id,
             repo_type="space",
-            space_sdk="docker",
+            space_sdk="gradio",
             token=token,
             private=False,
             exist_ok=True
@@ -44,8 +44,7 @@ def deploy():
     files_to_upload = [
         "app.py",
         "requirements.txt",
-        "Readme.md",
-        "Dockerfile"
+        "Readme.md"
     ]
     
     # Check if files exist and upload
