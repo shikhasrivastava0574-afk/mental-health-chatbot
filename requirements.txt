@@ -8,4 +8,5 @@ sentence-transformers
 pypdf
 transformers
 torch
+torchvision
 pandas
