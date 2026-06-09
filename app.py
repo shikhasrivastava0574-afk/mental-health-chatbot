@@ -312,7 +312,8 @@ def process_chat(user_message, chat_history, api_key_state, mood_history_state):
         response = fallback_responses.get(detected_emotion, fallback_responses["neutral"]) + suggest_key
 
     # Append to chatbot history
-    chat_history.append((user_message, response))
+    chat_history.append({"role": "user", "content": user_message})
+    chat_history.append({"role": "assistant", "content": response})
     
     # Emotion badge markdown
     badge_html = f"""
